@@ -27,6 +27,29 @@ To run `classification.py`:
 
 The script will process the image and save classification results to `results.txt` with tab-separated columns (label and probability).
 
+### Running the Web Application
+
+The project includes a web application with a FastAPI backend and Vue.js frontend. To run it using Docker:
+
+1. Make sure Docker and Docker Compose are installed on your system.
+
+2. Build and start the services:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. Access the application:
+   - **Frontend**: Open your browser and navigate to http://localhost:5173
+   - **Backend API**: Available at http://localhost:8000
+   - **API Documentation**: http://localhost:8000/docs (FastAPI auto-generated docs)
+
+4. To stop the services:
+   ```bash
+   docker-compose down
+   ```
+
+The web application allows you to upload an image through the browser interface. Click "Tell me what is on the image" to send the image to the backend API, which will return classification results displayed in a table format.
+
 ### Details
 The <b>mobilenet_v1_1.0_224_quant.tflite</b> file's input takes normalized 224x224x3 shape image. And the output is 1001x1 where the 1001 denotes labels in below order, contains the probabilty of the image belongs to the class.. The specific labels of the 1001 classes are stored in the <b>labels_mobilenet_quant_v1_224.txt</b> file in below  order<br>
 ```python
