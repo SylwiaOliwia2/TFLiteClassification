@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/classification_model:/app/classification_model
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MODEL_PATH=classification_model/mobilenet_v1_1.0_224_quant.tflite
+      - LABELS_PATH=classification_model/labels_mobilenet_quant_v1_224.txt
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ./backend/classification_model:/app/classification_model
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MODEL_PATH=classification_model/mobilenet_v1_1.0_224_quant.tflite
+      - LABELS_PATH=classification_model/labels_mobilenet_quant_v1_224.txt
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  redis_data:
