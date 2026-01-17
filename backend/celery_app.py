@@ -44,7 +44,7 @@ def classify_image_task(self, image_data: bytes, task_id: str):
         )
         
         # Load the TFLite model
-        model_path = os.getenv('MODEL_PATH', 'mobilenet_v1_1.0_224_quant.tflite')
+        model_path = os.getenv('MODEL_PATH', 'classification_model/mobilenet_v1_1.0_224_quant.tflite')
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
         
@@ -81,7 +81,7 @@ def classify_image_task(self, image_data: bytes, task_id: str):
                 classification_label.append(index)
         
         # Load labels
-        labels_path = os.getenv('LABELS_PATH', 'labels_mobilenet_quant_v1_224.txt')
+        labels_path = os.getenv('LABELS_PATH', 'classification_model/labels_mobilenet_quant_v1_224.txt')
         if not os.path.exists(labels_path):
             raise FileNotFoundError(f"Labels file not found: {labels_path}")
         

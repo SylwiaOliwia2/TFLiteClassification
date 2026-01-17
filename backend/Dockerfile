@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY main.py .
 COPY celery_app.py .
+COPY classification_model/ ./classification_model/
 
 # Expose port
 EXPOSE 8000
