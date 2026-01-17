@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -8,9 +20,39 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./results.txt:/app/results.txt
+      - ./mobilenet_v1_1.0_224_quant.tflite:/app/mobilenet_v1_1.0_224_quant.tflite
+      - ./labels_mobilenet_quant_v1_224.txt:/app/labels_mobilenet_quant_v1_224.txt
     environment:
       - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MODEL_PATH=mobilenet_v1_1.0_224_quant.tflite
+      - LABELS_PATH=labels_mobilenet_quant_v1_224.txt
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ./mobilenet_v1_1.0_224_quant.tflite:/app/mobilenet_v1_1.0_224_quant.tflite
+      - ./labels_mobilenet_quant_v1_224.txt:/app/labels_mobilenet_quant_v1_224.txt
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MODEL_PATH=mobilenet_v1_1.0_224_quant.tflite
+      - LABELS_PATH=labels_mobilenet_quant_v1_224.txt
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
   frontend:
     build:
@@ -25,3 +67,6 @@ services:
       - backend
     environment:
       - VITE_API_URL=http://localhost:8000
+
+volumes:
+  redis_data:

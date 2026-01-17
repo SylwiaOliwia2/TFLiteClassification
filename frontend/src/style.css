@@ -95,6 +95,20 @@ h1 {
   cursor: not-allowed;
 }
 
+.resume-button {
+  background: #f39c12;
+  margin-left: 10px;
+}
+
+.resume-button:hover:not(:disabled) {
+  background: #e67e22;
+}
+
+.file-label.disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
 .loading {
   text-align: center;
   color: #667eea;
