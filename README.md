@@ -5,6 +5,28 @@ The segmentation model can be downloaded from above link.<br>
 For the realtime implementation on Android look into the <a href="https://github.com/tensorflow/examples/tree/master/lite/examples/image_classification/android">Android Image Classification Example</a><br>
 Follow the <a href="https://github.com/joonb14/TFLiteClassification/blob/main/classification.ipynb">classification.ipynb</a> to get information about how to use the TFLite model in your Python environment.<br>
 
+### Usage
+
+To run `classification.py`:
+
+1. Create and activate virtual environment:
+   ```bash
+   python -m venv env
+   source venv/bin/activate
+   ```
+
+2. Install requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the script:
+   ```bash
+   python classification.py
+   ```
+
+The script will process the image and save classification results to `results.txt` with tab-separated columns (label and probability).
+
 ### Details
 The <b>mobilenet_v1_1.0_224_quant.tflite</b> file's input takes normalized 224x224x3 shape image. And the output is 1001x1 where the 1001 denotes labels in below order, contains the probabilty of the image belongs to the class.. The specific labels of the 1001 classes are stored in the <b>labels_mobilenet_quant_v1_224.txt</b> file in below  order<br>
 ```python
