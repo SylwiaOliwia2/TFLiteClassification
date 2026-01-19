@@ -86,7 +86,7 @@ export default {
     const error = ref(null)
     const taskId = ref(null)
     const taskStatus = ref(null)
-    const pollInterval = ref(null)
+    const eventSource = ref(null)
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
     const showResumeButton = computed(() => {
@@ -110,45 +110,47 @@ export default {
         error.value = null
         taskId.value = null
         taskStatus.value = null
-        stopPolling()
+        stopEventStream()
       }
     }
 
-    const stopPolling = () => {
-      if (pollInterval.value) {
-        clearInterval(pollInterval.value)
-        pollInterval.value = null
+    const stopEventStream = () => {
+      if (eventSource.value) {
+        eventSource.value.close()
+        eventSource.value = null
       }
     }
 
-    const pollTaskStatus = async () => {
-      if (!taskId.value) return
-
-      try {
-        const response = await fetch(`${apiUrl}/task/${taskId.value}/status`)
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+    const startEventStream = (taskId) => {
+      stopEventStream()
+      
+      const streamUrl = `${apiUrl}/task/${taskId}/stream`
+      eventSource.value = new EventSource(streamUrl)
+      
+      eventSource.value.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          taskStatus.value = data.status
+          
+          if (data.status === 'completed') {
+            stopEventStream()
+            loading.value = false
+            results.value = data.results || []
+            error.value = null
+          } else if (data.status === 'failed') {
+            stopEventStream()
+            loading.value = false
+            error.value = data.error || 'Classification failed. Please try again.'
+            results.value = []
+          }
+        } catch (err) {
+          console.error('Error parsing SSE message:', err)
         }
-
-        const data = await response.json()
-        taskStatus.value = data.status
-
-        if (data.status === 'completed') {
-          stopPolling()
-          loading.value = false
-          results.value = data.results || []
-          error.value = null
-        } else if (data.status === 'failed') {
-          stopPolling()
-          loading.value = false
-          error.value = data.error || 'Classification failed. Please try again.'
-          results.value = []
-        }
-        // Continue polling for 'queued' and 'processing' statuses
-      } catch (err) {
-        console.error('Error polling task status:', err)
-        // Don't stop polling on network errors, might be temporary
+      }
+      
+      eventSource.value.onerror = (err) => {
+        console.error('SSE connection error:', err)
+        // Keep connection open, might recover
       }
     }
 
@@ -159,7 +161,7 @@ export default {
       error.value = null
       results.value = []
       taskStatus.value = null
-      stopPolling()
+      stopEventStream()
 
       try {
         const formData = new FormData()
@@ -179,14 +181,13 @@ export default {
         taskId.value = data.task_id
         taskStatus.value = data.status
 
-        // Start polling for task status
-        pollTaskStatus()
-        pollInterval.value = setInterval(pollTaskStatus, 1000) // Poll every second
+        // Start SSE stream for real-time updates
+        startEventStream(data.task_id)
       } catch (err) {
         loading.value = false
         error.value = `Error: ${err.message}. Make sure the backend is running on ${apiUrl}`
         console.error('Error classifying image:', err)
-        stopPolling()
+        stopEventStream()
       }
     }
 
@@ -196,7 +197,7 @@ export default {
       loading.value = true
       error.value = null
       results.value = []
-      stopPolling()
+      stopEventStream()
 
       try {
         const formData = new FormData()
@@ -215,20 +216,19 @@ export default {
         const data = await response.json()
         taskStatus.value = data.status
 
-        // Start polling for task status
-        pollTaskStatus()
-        pollInterval.value = setInterval(pollTaskStatus, 1000)
+        // Start SSE stream for real-time updates
+        startEventStream(taskId.value)
       } catch (err) {
         loading.value = false
         error.value = `Error retrying: ${err.message}`
         console.error('Error retrying task:', err)
-        stopPolling()
+        stopEventStream()
       }
     }
 
-    // Cleanup polling on component unmount
+    // Cleanup event stream on component unmount
     onUnmounted(() => {
-      stopPolling()
+      stopEventStream()
     })
 
     return {

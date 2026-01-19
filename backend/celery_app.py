@@ -42,6 +42,11 @@ def classify_image_task(self, image_data: bytes, task_id: str):
             3600,  # 1 hour expiry
             "processing"
         )
+        # Publish status update via Redis pub/sub
+        redis_client.publish(
+            f"task:{task_id}:updates",
+            json.dumps({"task_id": task_id, "status": "processing"})
+        )
         
         # Load the TFLite model
         model_path = os.getenv('MODEL_PATH', 'classification_model/mobilenet_v1_1.0_224_quant.tflite')
@@ -116,6 +121,11 @@ def classify_image_task(self, image_data: bytes, task_id: str):
             3600,
             "completed"
         )
+        # Publish completion update via Redis pub/sub
+        redis_client.publish(
+            f"task:{task_id}:updates",
+            json.dumps({"task_id": task_id, "status": "completed", "results": results})
+        )
         
         return {"status": "completed", "results": results}
         
@@ -136,6 +146,11 @@ def classify_image_task(self, image_data: bytes, task_id: str):
             f"task:{task_id}:status",
             3600,
             "failed"
+        )
+        # Publish failure update via Redis pub/sub
+        redis_client.publish(
+            f"task:{task_id}:updates",
+            json.dumps({"task_id": task_id, "status": "failed", "error": str(e)})
         )
         
         # Re-raise to mark task as failed in Celery
